@@ -267,192 +267,188 @@ def ejecutar_experimentos() -> tuple[pd.DataFrame, pd.DataFrame]:
 
 
 # ============================================================
+# ============================================================
 # 7. INTERFAZ STREAMLIT
 # ============================================================
-st.set_page_config(
-    page_title="Optimizador genético de proyectos",
-    page_icon="🧬",
-    layout="wide",
-)
-
-st.title("🧬 Selección de proyectos con presupuesto limitado")
-st.caption(
-    "Algoritmo genético con cromosomas binarios, selección por torneo, "
-    "cruce de un punto, mutación, elitismo y validación exhaustiva."
-)
-
-st.metric("Presupuesto máximo", f"S/ {PRESUPUESTO:,.0f}")
-
-with st.expander("Ver datos de los proyectos", expanded=True):
-    df_proyectos = pd.DataFrame(PROYECTOS)
-    df_proyectos.columns = ["Proyecto", "Costo (S/)", "Beneficio"]
-    st.dataframe(df_proyectos, use_container_width=True, hide_index=True)
-
-tab_opt, tab_exp, tab_exacto, tab_teoria = st.tabs([
-    "🚀 Ejecutar algoritmo genético",
-    "📊 Comparar configuraciones",
-    "🔎 Óptimo exacto",
-    "📘 Explicación y análisis",
-])
-
-with tab_opt:
-    st.subheader("Configurar una ejecución")
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        nombre_config = st.selectbox("Configuración predefinida", ["A", "B", "C"])
-        valores = CONFIGURACIONES[nombre_config]
-        poblacion_tamano = st.number_input(
-            "Tamaño de población", min_value=20, max_value=300,
-            value=valores["poblacion"], step=10
-        )
-    with col2:
-        prob_cruce = st.slider(
-            "Probabilidad de cruce", 0.0, 1.0,
-            float(valores["cruce"]), 0.05
-        )
-        prob_mutacion = st.slider(
-            "Probabilidad de mutación por gen", 0.0, 1.0,
-            float(valores["mutacion"]), 0.01
-        )
-    with col3:
-        generaciones = st.number_input(
-            "Generaciones", min_value=50, max_value=1000,
-            value=valores["generaciones"], step=10
-        )
-        semilla = st.number_input("Semilla aleatoria", min_value=0, max_value=999999, value=11)
-
-    if st.button("Ejecutar optimización", type="primary"):
-        st.session_state["resultado_ga"] = ejecutar_algoritmo_genetico(
-            int(poblacion_tamano), float(prob_cruce), float(prob_mutacion),
-            int(generaciones), int(semilla)
-        )
-
-    if "resultado_ga" in st.session_state:
-        res = st.session_state["resultado_ga"]
-        a, b, c = st.columns(3)
-        a.metric("Beneficio", str(res["beneficio"]))
-        b.metric("Costo total", f"S/ {res['costo']:,.0f}")
-        c.metric("Saldo disponible", f"S/ {res['saldo']:,.0f}")
-
-        st.write(f"**Cromosoma ganador:** `{res['cromosoma']}`")
-        st.write("**Proyectos elegidos:** " + (", ".join(res["proyectos"]) or "Ninguno"))
-        st.write(f"**Tiempo de ejecución:** {res['tiempo_segundos']:.5f} segundos")
-
-        fig, ax = plt.subplots(figsize=(9, 4))
-        generaciones_x = list(range(len(res["historial_mejor"])))
-        ax.plot(generaciones_x, res["historial_mejor"], label="Mejor fitness")
-        ax.plot(generaciones_x, res["historial_promedio"], label="Fitness promedio")
-        ax.set_title("Evolución del fitness por generación")
-        ax.set_xlabel("Generación")
-        ax.set_ylabel("Fitness (beneficio factible)")
-        ax.grid(alpha=0.25)
-        ax.legend()
-        fig.tight_layout()
-        st.pyplot(fig)
-
-        st.markdown("#### Detalle de los proyectos elegidos")
-        df_seleccion = pd.DataFrame([
-            {
-                "Proyecto": IDS[i],
-                "Seleccionado": "Sí" if gene else "No",
-                "Costo (S/)": COSTOS[i] if gene else 0,
-                "Beneficio": BENEFICIOS[i] if gene else 0,
-            }
-            for i, gene in enumerate(res["genes"])
-        ])
-        st.dataframe(df_seleccion, use_container_width=True, hide_index=True)
-
-with tab_exp:
-    st.subheader("Tres configuraciones, cinco semillas cada una")
-    st.write(
-        "Se usan las semillas 11, 23, 37, 49 y 61 en cada configuración. "
-        "Los tiempos dependen de la computadora y pueden variar."
+def render():
+    """Renderiza el panel del optimizador genético de proyectos."""
+    st.title("🧬 Selección de proyectos con presupuesto limitado")
+    st.caption(
+        "Algoritmo genético con cromosomas binarios, selección por torneo, "
+        "cruce de un punto, mutación, elitismo y validación exhaustiva."
     )
-    if st.button("Ejecutar las 15 pruebas", type="primary"):
-        with st.spinner("Ejecutando 15 pruebas del algoritmo genético..."):
-            detalle, resumen = ejecutar_experimentos()
-            st.session_state["detalle_exp"] = detalle
-            st.session_state["resumen_exp"] = resumen
+    st.metric("Presupuesto máximo", f"S/ {PRESUPUESTO:,.0f}")
 
-    if "resumen_exp" in st.session_state:
-        st.markdown("#### Resumen comparativo")
-        st.dataframe(
-            st.session_state["resumen_exp"].round(3),
-            use_container_width=True,
-            hide_index=True,
+    with st.expander("Ver datos de los proyectos", expanded=True):
+        df_proyectos = pd.DataFrame(PROYECTOS)
+        df_proyectos.columns = ["Proyecto", "Costo (S/)", "Beneficio"]
+        st.dataframe(df_proyectos, use_container_width=True, hide_index=True)
+
+    tab_opt, tab_exp, tab_exacto, tab_teoria = st.tabs([
+        "🚀 Ejecutar algoritmo genético",
+        "📊 Comparar configuraciones",
+        "🔎 Óptimo exacto",
+        "📘 Explicación y análisis",
+    ])
+
+    with tab_opt:
+        st.subheader("Configurar una ejecución")
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            nombre_config = st.selectbox("Configuración predefinida", ["A", "B", "C"])
+            valores = CONFIGURACIONES[nombre_config]
+            poblacion_tamano = st.number_input(
+                "Tamaño de población", min_value=20, max_value=300,
+                value=valores["poblacion"], step=10
+            )
+        with col2:
+            prob_cruce = st.slider(
+                "Probabilidad de cruce", 0.0, 1.0,
+                float(valores["cruce"]), 0.05
+            )
+            prob_mutacion = st.slider(
+                "Probabilidad de mutación por gen", 0.0, 1.0,
+                float(valores["mutacion"]), 0.01
+            )
+        with col3:
+            generaciones = st.number_input(
+                "Generaciones", min_value=50, max_value=1000,
+                value=valores["generaciones"], step=10
+            )
+            semilla = st.number_input("Semilla aleatoria", min_value=0, max_value=999999, value=11)
+
+        if st.button("Ejecutar optimización", type="primary"):
+            st.session_state["resultado_ga"] = ejecutar_algoritmo_genetico(
+                int(poblacion_tamano), float(prob_cruce), float(prob_mutacion),
+                int(generaciones), int(semilla)
+            )
+
+        if "resultado_ga" in st.session_state:
+            res = st.session_state["resultado_ga"]
+            a, b, c = st.columns(3)
+            a.metric("Beneficio", str(res["beneficio"]))
+            b.metric("Costo total", f"S/ {res['costo']:,.0f}")
+            c.metric("Saldo disponible", f"S/ {res['saldo']:,.0f}")
+
+            st.write(f"**Cromosoma ganador:** `{res['cromosoma']}`")
+            st.write("**Proyectos elegidos:** " + (", ".join(res["proyectos"]) or "Ninguno"))
+            st.write(f"**Tiempo de ejecución:** {res['tiempo_segundos']:.5f} segundos")
+
+            fig, ax = plt.subplots(figsize=(9, 4))
+            generaciones_x = list(range(len(res["historial_mejor"])))
+            ax.plot(generaciones_x, res["historial_mejor"], label="Mejor fitness")
+            ax.plot(generaciones_x, res["historial_promedio"], label="Fitness promedio")
+            ax.set_title("Evolución del fitness por generación")
+            ax.set_xlabel("Generación")
+            ax.set_ylabel("Fitness (beneficio factible)")
+            ax.grid(alpha=0.25)
+            ax.legend()
+            fig.tight_layout()
+            st.pyplot(fig)
+
+            st.markdown("#### Detalle de los proyectos elegidos")
+            df_seleccion = pd.DataFrame([
+                {
+                    "Proyecto": IDS[i],
+                    "Seleccionado": "Sí" if gene else "No",
+                    "Costo (S/)": COSTOS[i] if gene else 0,
+                    "Beneficio": BENEFICIOS[i] if gene else 0,
+                }
+                for i, gene in enumerate(res["genes"])
+            ])
+            st.dataframe(df_seleccion, use_container_width=True, hide_index=True)
+
+    with tab_exp:
+        st.subheader("Tres configuraciones, cinco semillas cada una")
+        st.write(
+            "Se usan las semillas 11, 23, 37, 49 y 61 en cada configuración. "
+            "Los tiempos dependen de la computadora y pueden variar."
         )
-        st.markdown("#### Resultados por semilla")
-        st.dataframe(
-            st.session_state["detalle_exp"].round(3),
-            use_container_width=True,
-            hide_index=True,
-        )
-        st.download_button(
-            "Descargar resultados detallados CSV",
-            data=st.session_state["detalle_exp"].to_csv(index=False).encode("utf-8"),
-            file_name="resultados_experimentos_geneticos.csv",
-            mime="text/csv",
-        )
-        st.download_button(
-            "Descargar resumen CSV",
-            data=st.session_state["resumen_exp"].to_csv(index=False).encode("utf-8"),
-            file_name="resumen_configuraciones_geneticas.csv",
-            mime="text/csv",
+        if st.button("Ejecutar las 15 pruebas", type="primary"):
+            with st.spinner("Ejecutando 15 pruebas del algoritmo genético..."):
+                detalle, resumen = ejecutar_experimentos()
+                st.session_state["detalle_exp"] = detalle
+                st.session_state["resumen_exp"] = resumen
+
+        if "resumen_exp" in st.session_state:
+            st.markdown("#### Resumen comparativo")
+            st.dataframe(
+                st.session_state["resumen_exp"].round(3),
+                use_container_width=True,
+                hide_index=True,
+            )
+            st.markdown("#### Resultados por semilla")
+            st.dataframe(
+                st.session_state["detalle_exp"].round(3),
+                use_container_width=True,
+                hide_index=True,
+            )
+            st.download_button(
+                "Descargar resultados detallados CSV",
+                data=st.session_state["detalle_exp"].to_csv(index=False).encode("utf-8"),
+                file_name="resultados_experimentos_geneticos.csv",
+                mime="text/csv",
+            )
+            st.download_button(
+                "Descargar resumen CSV",
+                data=st.session_state["resumen_exp"].to_csv(index=False).encode("utf-8"),
+                file_name="resumen_configuraciones_geneticas.csv",
+                mime="text/csv",
+            )
+
+    with tab_exacto:
+        st.subheader("Búsqueda exhaustiva de todas las soluciones")
+        exacto = busqueda_exhaustiva()
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Combinaciones evaluadas", exacto["combinaciones_evaluadas"])
+        c2.metric("Beneficio óptimo", exacto["beneficio"])
+        c3.metric("Costo óptimo", f"S/ {exacto['costo']:,.0f}")
+
+        st.write(f"**Cromosoma óptimo:** `{exacto['cromosoma']}`")
+        st.write("**Proyectos óptimos:** " + ", ".join(exacto["proyectos"]))
+        st.write(f"**Saldo restante:** S/ {exacto['saldo']:,.0f}")
+        st.info(
+            "La búsqueda exhaustiva prueba las 2⁸ = 256 combinaciones y encuentra "
+            "el óptimo global para estos datos. El algoritmo genético es heurístico: "
+            "puede encontrarlo, pero no lo garantiza en general."
         )
 
-with tab_exacto:
-    st.subheader("Búsqueda exhaustiva de todas las soluciones")
-    exacto = busqueda_exhaustiva()
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Combinaciones evaluadas", exacto["combinaciones_evaluadas"])
-    c2.metric("Beneficio óptimo", exacto["beneficio"])
-    c3.metric("Costo óptimo", f"S/ {exacto['costo']:,.0f}")
+    with tab_teoria:
+        st.subheader("Decisiones de diseño")
+        st.markdown("""
+        **Representación:** un cromosoma tiene ocho bits, uno por proyecto. El bit 1 significa seleccionado y el bit 0 significa no seleccionado.
 
-    st.write(f"**Cromosoma óptimo:** `{exacto['cromosoma']}`")
-    st.write("**Proyectos óptimos:** " + ", ".join(exacto["proyectos"]))
-    st.write(f"**Saldo restante:** S/ {exacto['saldo']:,.0f}")
-    st.info(
-        "La búsqueda exhaustiva prueba las 2⁸ = 256 combinaciones y encuentra "
-        "el óptimo global para estos datos. El algoritmo genético es heurístico: "
-        "puede encontrarlo, pero no lo garantiza en general."
+        **Fitness y presupuesto:** si el costo supera S/ 20 000, el fitness es 0. Si la solución es factible, su fitness es la suma de los beneficios. Se utiliza esta penalización porque todos los beneficios son positivos; así, una solución factible no vacía tiene mayor fitness que una solución que excede el presupuesto.
+
+        **Selección por torneo:** se eligen al azar tres individuos y se conserva el de mayor fitness como progenitor.
+
+        **Cruce de un punto:** se elige una posición entre los genes y se intercambian las partes posteriores de dos progenitores.
+
+        **Mutación:** cada bit tiene una probabilidad independiente de invertirse (0 pasa a 1 y 1 pasa a 0).
+
+        **Elitismo:** se copia el mejor individuo de la generación a la siguiente sin modificarlo, evitando perder la mejor solución encontrada hasta ese momento.
+
+        **Criterio de parada:** el algoritmo se ejecuta durante el número de generaciones configurado. No se detiene anticipadamente al encontrar el óptimo.
+        """)
+
+        st.markdown("#### Preguntas de análisis")
+        st.markdown("""
+        **¿Cómo afecta la mutación a la convergencia?**
+        Una mutación baja ayuda a mantener cambios pequeños; una mutación mayor explora más combinaciones y puede evitar que la población se estanque, pero también puede destruir combinaciones prometedoras.
+
+        **¿Qué aporta el elitismo?**
+        Conserva el mejor individuo conocido y evita que se pierda por cruce o mutación. Un elitismo excesivo, si se aplicara a muchos individuos, podría reducir la diversidad.
+
+        **¿Garantiza el algoritmo genético el óptimo global?**
+        No. Es un método heurístico y estocástico. En este problema pequeño podemos verificar el óptimo con búsqueda exhaustiva.
+
+        **¿Cuándo sería preferible a la búsqueda exhaustiva?**
+        Cuando el número de decisiones crece tanto que enumerar todas las combinaciones resulta costoso. Con ocho proyectos solo hay 256 combinaciones y la búsqueda exhaustiva es sencilla; el algoritmo genético se estudia para comprender su comportamiento y cómo escalar a problemas mayores.
+        """)
+
+    st.divider()
+    st.caption(
+        "Modelo académico. Verifica los resultados, explica las decisiones de diseño "
+        "y cita las fuentes utilizadas en el informe."
     )
-
-with tab_teoria:
-    st.subheader("Decisiones de diseño")
-    st.markdown("""
-    **Representación:** un cromosoma tiene ocho bits, uno por proyecto. El bit 1 significa seleccionado y el bit 0 significa no seleccionado.
-
-    **Fitness y presupuesto:** si el costo supera S/ 20 000, el fitness es 0. Si la solución es factible, su fitness es la suma de los beneficios. Se utiliza esta penalización porque todos los beneficios son positivos; así, una solución factible no vacía tiene mayor fitness que una solución que excede el presupuesto.
-
-    **Selección por torneo:** se eligen al azar tres individuos y se conserva el de mayor fitness como progenitor.
-
-    **Cruce de un punto:** se elige una posición entre los genes y se intercambian las partes posteriores de dos progenitores.
-
-    **Mutación:** cada bit tiene una probabilidad independiente de invertirse (0 pasa a 1 y 1 pasa a 0).
-
-    **Elitismo:** se copia el mejor individuo de la generación a la siguiente sin modificarlo, evitando perder la mejor solución encontrada hasta ese momento.
-
-    **Criterio de parada:** el algoritmo se ejecuta durante el número de generaciones configurado. No se detiene anticipadamente al encontrar el óptimo.
-    """)
-
-    st.markdown("#### Preguntas de análisis")
-    st.markdown("""
-    **¿Cómo afecta la mutación a la convergencia?**  
-    Una mutación baja ayuda a mantener cambios pequeños; una mutación mayor explora más combinaciones y puede evitar que la población se estanque, pero también puede destruir combinaciones prometedoras.
-
-    **¿Qué aporta el elitismo?**  
-    Conserva el mejor individuo conocido y evita que se pierda por cruce o mutación. Un elitismo excesivo, si se aplicara a muchos individuos, podría reducir la diversidad.
-
-    **¿Garantiza el algoritmo genético el óptimo global?**  
-    No. Es un método heurístico y estocástico. En este problema pequeño podemos verificar el óptimo con búsqueda exhaustiva.
-
-    **¿Cuándo sería preferible a la búsqueda exhaustiva?**  
-    Cuando el número de decisiones crece tanto que enumerar todas las combinaciones resulta costoso. Con ocho proyectos solo hay 256 combinaciones y la búsqueda exhaustiva es sencilla; el algoritmo genético se estudia para comprender su comportamiento y cómo escalar a problemas mayores.
-    """)
-
-st.divider()
-st.caption(
-    "Modelo académico. Verifica los resultados, explica las decisiones de diseño "
-    "y cita las fuentes utilizadas en el informe."
-)
